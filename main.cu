@@ -4,7 +4,27 @@
 #define N 1024
 
 __global__ void reduce_sum(float* input, float* output) {
-   // TODO: Implement this
+    // Allocate shared memory for the block
+    extern __shared__ float sdata[];
+    
+    // Each thread loads one element from global to shared memory
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    sdata[tid] = input[i];
+    __syncthreads();
+    
+    // Perform reduction in shared memory
+    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+    
+    // Write result for this block to global memory
+    if (tid == 0) {
+        output[blockIdx.x] = sdata[0];
+    }
 }
 
 int main() {
